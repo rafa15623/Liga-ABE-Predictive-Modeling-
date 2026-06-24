@@ -5,7 +5,8 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import (
     accuracy_score, precision_score, recall_score, 
-    f1_score, confusion_matrix, roc_auc_score, mean_absolute_error
+    f1_score, confusion_matrix, roc_auc_score, 
+    mean_absolute_error, mean_squared_error, r2_score
 )
 
 FILE_X = "Partidos_OneHot_Binario_full_season.csv"
@@ -69,7 +70,7 @@ def main():
             X_train_list.append(current_features)
             Y_train_list.append([score_home, score_away])
             
-            # Actualización de stats
+            
             team_stats[home_idx]['games'] += 1
             team_stats[away_idx]['games'] += 1
             team_stats[home_idx]['pts_for'] += score_home
@@ -95,7 +96,7 @@ def main():
     X_train_scaled = scaler.fit_transform(X_train)
 
     X_split_train, X_split_test, Y_split_train, Y_split_test = train_test_split(
-        X_train_scaled, Y_train, test_size=0.2, random_state=42
+        X_train_scaled, Y_train, test_size=0.2, shuffle=False
     )
     
     lr = LinearRegression()
@@ -108,9 +109,23 @@ def main():
     
     diferencia_puntos_pred = predicciones_puntos[:, 0] - predicciones_puntos[:, 1]
     
-    mae_home = mean_absolute_error(Y_split_test[:, 0], predicciones_puntos[:, 0])
-    mae_away = mean_absolute_error(Y_split_test[:, 1], predicciones_puntos[:, 1])
-    mae_total = mean_absolute_error(Y_split_test, predicciones_puntos)
+    y_true_flat = Y_split_test.flatten()
+    y_pred_flat = predicciones_puntos.flatten()
+    
+    me_total = np.mean(y_true_flat - y_pred_flat)
+    mae_total = mean_absolute_error(y_true_flat, y_pred_flat)
+    mse_total = mean_squared_error(y_true_flat, y_pred_flat)
+    rmse_total = np.sqrt(mse_total)
+    
+    r2_val = r2_score(y_true_flat, y_pred_flat)
+    
+    n_observaciones = len(y_true_flat)
+    p_predictores = X_split_test.shape[1]
+    
+    if n_observaciones > p_predictores + 1:
+        adj_r2_val = 1 - ((1 - r2_val) * (n_observaciones - 1) / (n_observaciones - p_predictores - 1))
+    else:
+        adj_r2_val = float('nan') 
     
     acc = accuracy_score(Y_true_bin, Y_pred_bin)
     precision = precision_score(Y_true_bin, Y_pred_bin, zero_division=0)
@@ -122,10 +137,13 @@ def main():
     print("\n" + "="*60)
     print("        MÉTRICAS DE RENDIMIENTO (CONJUNTO DE PRUEBA)        ")
     print("="*60)
-    print(" 1. MÉTRICAS DE PUNTOS (REGRESIÓN):")
-    print(f" Error Absoluto Promedio Total:  {mae_total:.2f} pts")
-    print(f" Error Absoluto Promedio Local:  {mae_home:.2f} pts")
-    print(f" Error Absoluto Promedio Visita: {mae_away:.2f} pts")
+    print(" 1. MÉTRICAS DE PUNTOS GLOBALES (REGRESIÓN):")
+    print(f" Mean Error (ME):                 {me_total:.2f} pts")
+    print(f" Mean Absolute Error (MAE):       {mae_total:.2f} pts")
+    print(f" Mean Squared Error (MSE):        {mse_total:.2f} pts²")
+    print(f" Root Mean Sq. Error (RMSE):      {rmse_total:.2f} pts")
+    print(f" R-cuadrado (R²):                 {r2_val:.4f}")
+    print(f" R-cuadrado Ajustado (Adj R²):    {adj_r2_val:.4f}")
     print("-" * 60)
     print(" 2. MÉTRICAS DE CLASIFICACIÓN (GANADOR DEL PARTIDO):")
     print(f" Accuracy (Exactitud general): {acc:.2%}")
