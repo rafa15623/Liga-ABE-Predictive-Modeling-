@@ -75,7 +75,7 @@ def main():
     X_train_scaled = scaler.fit_transform(X_train)
     
     X_split_train, X_split_test, Y_split_train, Y_split_test = train_test_split(
-        X_train_scaled, Y_train, test_size=0.2, random_state=42
+        X_train_scaled, Y_train, test_size=0.2, shuffle=False
     )
     
     clf = LogisticRegression(C=0.5, solver='liblinear', max_iter=1000)
